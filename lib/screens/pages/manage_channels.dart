@@ -41,14 +41,20 @@ class _ChannelsTabState extends State<_ChannelsTab> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _logoController = TextEditingController();
+  final _categoryController = TextEditingController(); // شوێنی کاتیگۆری زیادکرا
   bool _isVip = false;
 
   Future<void> _addChannel() async {
     if (_nameController.text.isEmpty || _urlController.text.isEmpty) return;
     await FirebaseFirestore.instance.collection('channels').add({
-      'name': _nameController.text, 'stream_url': _urlController.text, 'logo_url': _logoController.text, 'is_vip': _isVip, 'created_at': FieldValue.serverTimestamp(),
+      'name': _nameController.text, 
+      'stream_url': _urlController.text, 
+      'logo_url': _logoController.text, 
+      'category': _categoryController.text.isNotEmpty ? _categoryController.text : 'گشتی', // ناردنی کاتیگۆری
+      'is_vip': _isVip, 
+      'created_at': FieldValue.serverTimestamp(),
     });
-    _nameController.clear(); _urlController.clear(); _logoController.clear();
+    _nameController.clear(); _urlController.clear(); _logoController.clear(); _categoryController.clear();
     setState(() => _isVip = false);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کەناڵ زیادکرا')));
   }
@@ -69,7 +75,9 @@ class _ChannelsTabState extends State<_ChannelsTab> {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(flex: 2, child: TextField(controller: _logoController, decoration: const InputDecoration(labelText: 'لینکی لۆگۆ', border: OutlineInputBorder()))),
+              Expanded(child: TextField(controller: _logoController, decoration: const InputDecoration(labelText: 'لینکی لۆگۆ', border: OutlineInputBorder()))),
+              const SizedBox(width: 10),
+              Expanded(child: TextField(controller: _categoryController, decoration: const InputDecoration(labelText: 'کاتیگۆری (وەک: وەرزشی، فیلم)', border: OutlineInputBorder()))),
               const SizedBox(width: 10),
               const Text('VIP'), Switch(value: _isVip, activeColor: Colors.yellow, onChanged: (v) => setState(() => _isVip = v)),
               const SizedBox(width: 10),
@@ -92,6 +100,7 @@ class _ChannelsTabState extends State<_ChannelsTab> {
                       child: ListTile(
                         leading: CircleAvatar(backgroundImage: NetworkImage(data['logo_url'] ?? '')),
                         title: Text(data['name'] ?? ''),
+                        subtitle: Text(data['category'] ?? 'گشتی', style: const TextStyle(color: Colors.orange)),
                         trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('channels').doc(docs[index].id).delete()),
                       ),
                     );
@@ -113,11 +122,8 @@ class _SlidersTabState extends State<_SlidersTab> {
 
   Future<void> _addSlider() async {
     if (_imageController.text.isEmpty) return;
-    await FirebaseFirestore.instance.collection('sliders').add({
-      'image_url': _imageController.text, 'created_at': FieldValue.serverTimestamp(),
-    });
+    await FirebaseFirestore.instance.collection('sliders').add({'image_url': _imageController.text, 'created_at': FieldValue.serverTimestamp()});
     _imageController.clear();
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('وێنەی سڵایدەر زیادکرا')));
   }
 
   @override
@@ -139,16 +145,14 @@ class _SlidersTabState extends State<_SlidersTab> {
               stream: FirebaseFirestore.instance.collection('sliders').orderBy('created_at', descending: true).snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                var docs = snapshot.data!.docs;
                 return ListView.builder(
-                  itemCount: docs.length,
+                  itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
                     return Card(
                       color: const Color(0xFF2C2C2C),
                       child: ListTile(
-                        leading: Image.network(docs[index]['image_url'], width: 80, fit: BoxFit.cover),
-                        title: const Text('وێنەی سڵایدەر'),
-                        trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('sliders').doc(docs[index].id).delete()),
+                        leading: Image.network(snapshot.data!.docs[index]['image_url'], width: 80, fit: BoxFit.cover),
+                        trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('sliders').doc(snapshot.data!.docs[index].id).delete()),
                       ),
                     );
                   },
@@ -162,16 +166,13 @@ class _SlidersTabState extends State<_SlidersTab> {
   }
 }
 
-// ================= بەشی ڕیکلام (شریتی ناوەڕاست) =================
+// ================= بەشی ڕیکلام =================
 class _AdsTab extends StatefulWidget { const _AdsTab(); @override State<_AdsTab> createState() => _AdsTabState(); }
 class _AdsTabState extends State<_AdsTab> {
   final _adImageController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _loadCurrentAd();
-  }
+  void initState() { super.initState(); _loadCurrentAd(); }
 
   Future<void> _loadCurrentAd() async {
     var doc = await FirebaseFirestore.instance.collection('ads').doc('banner').get();
@@ -179,10 +180,8 @@ class _AdsTabState extends State<_AdsTab> {
   }
 
   Future<void> _updateAd() async {
-    await FirebaseFirestore.instance.collection('ads').doc('banner').set({
-      'image_url': _adImageController.text,
-    });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ڕیکلامەکە نوێکرایەوە')));
+    await FirebaseFirestore.instance.collection('ads').doc('banner').set({'image_url': _adImageController.text});
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ڕیکلامەکە سەیڤ کرا')));
   }
 
   @override
@@ -192,17 +191,11 @@ class _AdsTabState extends State<_AdsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('شریتی ڕیکلامی نێوان کەناڵەکان', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('شریتی ڕیکلامی نێوان کاتیگۆرییەکان', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          TextField(controller: _adImageController, decoration: const InputDecoration(labelText: 'لینکی وێنەی ڕیکلامەکە (Banner Image)', border: OutlineInputBorder())),
+          TextField(controller: _adImageController, decoration: const InputDecoration(labelText: 'لینکی وێنەی ڕیکلامەکە', border: OutlineInputBorder())),
           const SizedBox(height: 20),
-          Center(
-            child: ElevatedButton(
-              onPressed: _updateAd, 
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)), 
-              child: const Text('پاشەکەوتکردنی ڕیکلام', style: TextStyle(color: Colors.white, fontSize: 16))
-            ),
-          ),
+          Center(child: ElevatedButton(onPressed: _updateAd, style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)), child: const Text('پاشەکەوتکردن', style: TextStyle(color: Colors.white, fontSize: 16)))),
         ],
       ),
     );
