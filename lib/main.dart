@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'screens/pages/manage_channels.dart'; // دڵنیابە ئەم ڕێڕەوە ڕاستە بەپێی فایلەکانت
+import 'package:firebase_auth/firebase_auth.dart';
+import 'screens/login_screen.dart';
+import 'screens/pages/manage_channels.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // لێرەدا فایەربەیسمان بە دەستی بەستۆتەوە بۆ ئەوەی کێشەی نەبوونی فایلەکە دروست نەبێت
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "AIzaSyBHVhQFFOyup2eBTAKDMWZFB5In07wMXOg",
@@ -29,11 +30,16 @@ class AdminApp extends StatelessWidget {
     return MaterialApp(
       title: 'TV Admin Panel',
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return Directionality(textDirection: TextDirection.rtl, child: child!);
+      },
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF121212),
       ),
-      home: const ManageChannelsPage(),
+      home: FirebaseAuth.instance.currentUser == null 
+          ? const LoginScreen() 
+          : const ManageChannelsPage(),
     );
   }
 }
