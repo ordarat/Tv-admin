@@ -18,13 +18,14 @@ jobs:
         channel: 'stable'
 
     - name: Install dependencies
-      run: flutter pub get
+      run: |
+        flutter pub get
+        flutter pub upgrade
 
     - name: Configure Web
       run: flutter create . --platforms web
 
     - name: Build Web App
-      # ئەمە ڕێڕەوە دروستەکەیە بۆ پڕۆژەکەی تۆ
       run: flutter build web --release --base-href "/Tv-admin/"
 
     - name: Deploy to GitHub Pages
