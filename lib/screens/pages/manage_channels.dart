@@ -41,7 +41,7 @@ class _ChannelsTabState extends State<_ChannelsTab> {
   final _nameController = TextEditingController();
   final _urlController = TextEditingController();
   final _logoController = TextEditingController();
-  final _categoryController = TextEditingController(); // شوێنی کاتیگۆری زیادکرا
+  final _categoryController = TextEditingController();
   bool _isVip = false;
 
   Future<void> _addChannel() async {
@@ -50,13 +50,71 @@ class _ChannelsTabState extends State<_ChannelsTab> {
       'name': _nameController.text, 
       'stream_url': _urlController.text, 
       'logo_url': _logoController.text, 
-      'category': _categoryController.text.isNotEmpty ? _categoryController.text : 'گشتی', // ناردنی کاتیگۆری
+      'category': _categoryController.text.isNotEmpty ? _categoryController.text : 'گشتی',
       'is_vip': _isVip, 
       'created_at': FieldValue.serverTimestamp(),
     });
     _nameController.clear(); _urlController.clear(); _logoController.clear(); _categoryController.clear();
     setState(() => _isVip = false);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('کەناڵ زیادکرا')));
+  }
+
+  // پەنجەرەی دەستکاریکردنی کەناڵ
+  Future<void> _editChannel(DocumentSnapshot doc) async {
+    var data = doc.data() as Map<String, dynamic>;
+    final editNameCtrl = TextEditingController(text: data['name']);
+    final editUrlCtrl = TextEditingController(text: data['stream_url']);
+    final editLogoCtrl = TextEditingController(text: data['logo_url']);
+    final editCatCtrl = TextEditingController(text: data['category']);
+    bool editVip = data['is_vip'] ?? false;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF2C2C2C),
+              title: const Text('دەستکاریکردنی کەناڵ', style: TextStyle(color: Colors.orange)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(controller: editNameCtrl, decoration: const InputDecoration(labelText: 'ناوی کەناڵ')),
+                    const SizedBox(height: 10),
+                    TextField(controller: editUrlCtrl, decoration: const InputDecoration(labelText: 'لینکی M3U8')),
+                    const SizedBox(height: 10),
+                    TextField(controller: editLogoCtrl, decoration: const InputDecoration(labelText: 'لینکی لۆگۆ')),
+                    const SizedBox(height: 10),
+                    TextField(controller: editCatCtrl, decoration: const InputDecoration(labelText: 'کاتیگۆری')),
+                    const SizedBox(height: 10),
+                    SwitchListTile(title: const Text('VIP'), value: editVip, activeColor: Colors.yellow, onChanged: (v) => setState(() => editVip = v)),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('پاشگەزبوونەوە', style: TextStyle(color: Colors.grey))),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  onPressed: () async {
+                    await FirebaseFirestore.instance.collection('channels').doc(doc.id).update({
+                      'name': editNameCtrl.text,
+                      'stream_url': editUrlCtrl.text,
+                      'logo_url': editLogoCtrl.text,
+                      'category': editCatCtrl.text.isNotEmpty ? editCatCtrl.text : 'گشتی',
+                      'is_vip': editVip,
+                    });
+                    if (context.mounted) Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('گۆڕانکارییەکان سەیڤ کران')));
+                  },
+                  child: const Text('پاشەکەوتکردن', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
   }
 
   @override
@@ -77,7 +135,7 @@ class _ChannelsTabState extends State<_ChannelsTab> {
             children: [
               Expanded(child: TextField(controller: _logoController, decoration: const InputDecoration(labelText: 'لینکی لۆگۆ', border: OutlineInputBorder()))),
               const SizedBox(width: 10),
-              Expanded(child: TextField(controller: _categoryController, decoration: const InputDecoration(labelText: 'کاتیگۆری (وەک: وەرزشی، فیلم)', border: OutlineInputBorder()))),
+              Expanded(child: TextField(controller: _categoryController, decoration: const InputDecoration(labelText: 'کاتیگۆری', border: OutlineInputBorder()))),
               const SizedBox(width: 10),
               const Text('VIP'), Switch(value: _isVip, activeColor: Colors.yellow, onChanged: (v) => setState(() => _isVip = v)),
               const SizedBox(width: 10),
@@ -101,7 +159,13 @@ class _ChannelsTabState extends State<_ChannelsTab> {
                         leading: CircleAvatar(backgroundImage: NetworkImage(data['logo_url'] ?? '')),
                         title: Text(data['name'] ?? ''),
                         subtitle: Text(data['category'] ?? 'گشتی', style: const TextStyle(color: Colors.orange)),
-                        trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('channels').doc(docs[index].id).delete()),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _editChannel(docs[index])), // دوگمەی دەستکاریکردن
+                            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('channels').doc(docs[index].id).delete()),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -126,6 +190,32 @@ class _SlidersTabState extends State<_SlidersTab> {
     _imageController.clear();
   }
 
+  // پەنجەرەی دەستکاریکردنی سڵایدەر
+  Future<void> _editSlider(DocumentSnapshot doc) async {
+    final editImgCtrl = TextEditingController(text: doc['image_url']);
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2C2C2C),
+          title: const Text('دەستکاریکردنی سڵایدەر', style: TextStyle(color: Colors.orange)),
+          content: TextField(controller: editImgCtrl, decoration: const InputDecoration(labelText: 'لینکی وێنەی نوێ')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('پاشگەزبوونەوە', style: TextStyle(color: Colors.grey))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              onPressed: () async {
+                await FirebaseFirestore.instance.collection('sliders').doc(doc.id).update({'image_url': editImgCtrl.text});
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('پاشەکەوتکردن', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -148,11 +238,18 @@ class _SlidersTabState extends State<_SlidersTab> {
                 return ListView.builder(
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
+                    var doc = snapshot.data!.docs[index];
                     return Card(
                       color: const Color(0xFF2C2C2C),
                       child: ListTile(
-                        leading: Image.network(snapshot.data!.docs[index]['image_url'], width: 80, fit: BoxFit.cover),
-                        trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('sliders').doc(snapshot.data!.docs[index].id).delete()),
+                        leading: Image.network(doc['image_url'], width: 80, fit: BoxFit.cover),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _editSlider(doc)), // دوگمەی دەستکاریکردن
+                            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('sliders').doc(doc.id).delete()),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -167,6 +264,7 @@ class _SlidersTabState extends State<_SlidersTab> {
 }
 
 // ================= بەشی ڕیکلام =================
+// تێبینی: بەشی ڕیکلام لە خۆیدا پرۆسەی "دەستکاریکردنە" چونکە تەنها یەک شریتی ڕیکلاممان هەیە و بەردەوام ئەپدەیت دەکرێتەوە
 class _AdsTab extends StatefulWidget { const _AdsTab(); @override State<_AdsTab> createState() => _AdsTabState(); }
 class _AdsTabState extends State<_AdsTab> {
   final _adImageController = TextEditingController();
@@ -191,11 +289,24 @@ class _AdsTabState extends State<_AdsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('شریتی ڕیکلامی نێوان کاتیگۆرییەکان', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const Text('دەستکاریکردنی شریتی ڕیکلامی نێوان کاتیگۆرییەکان', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           TextField(controller: _adImageController, decoration: const InputDecoration(labelText: 'لینکی وێنەی ڕیکلامەکە', border: OutlineInputBorder())),
           const SizedBox(height: 20),
-          Center(child: ElevatedButton(onPressed: _updateAd, style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)), child: const Text('پاشەکەوتکردن', style: TextStyle(color: Colors.white, fontSize: 16)))),
+          Center(
+            child: ElevatedButton(
+              onPressed: _updateAd, 
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15)), 
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.edit, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('نوێکردنەوەی ڕیکلام', style: TextStyle(color: Colors.white, fontSize: 16)),
+                ],
+              )
+            )
+          ),
         ],
       ),
     );
