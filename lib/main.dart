@@ -15,7 +15,7 @@ void main() async {
       storageBucket: "ibrahimtv-c0d5d.firebasestorage.app",
       messagingSenderId: "658751407366",
       appId: "1:658751407366:web:5b34e69a4fd4de78330a87",
-      measurementId: "G-JMRKFQHLQP",
+      // دێڕی measurementId لێرەدا سڕدرایەوە چونکە کێشەی دروست دەکرد
     ),
   );
 
