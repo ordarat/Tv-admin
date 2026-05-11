@@ -12,6 +12,7 @@ dependencies:
   cupertino_icons: any
   firebase_core: any
   cloud_firestore: any
+  firebase_auth: any
   url_launcher: any
 
 dev_dependencies:
