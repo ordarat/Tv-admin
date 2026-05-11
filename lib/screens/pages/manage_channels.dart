@@ -277,6 +277,74 @@ class _AdsTabState extends State<_AdsTab> {
     _imgController.clear(); _linkController.clear(); _scriptController.clear();
   }
 
+  // ئەمە فەنکشنە نوێیەکەیە بۆ دەستکاریکردنی ڕیکلامەکان
+  Future<void> _editAd(DocumentSnapshot doc) async {
+    var data = doc.data() as Map<String, dynamic>;
+    String editType = data['type'] ?? 'image';
+    final editImgCtrl = TextEditingController(text: data['image_url'] ?? '');
+    final editLinkCtrl = TextEditingController(text: data['click_url'] ?? '');
+    final editScriptCtrl = TextEditingController(text: data['script_code'] ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF2C2C2C),
+              title: const Text('دەستکاریکردنی ڕیکلام', style: TextStyle(color: Colors.orange)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('جۆری ڕیکلام: ', style: TextStyle(color: Colors.orange)),
+                        const SizedBox(width: 10),
+                        DropdownButton<String>(
+                          value: editType, dropdownColor: const Color(0xFF2C2C2C),
+                          items: const [
+                            DropdownMenuItem(value: 'image', child: Text('وێنە + لینک', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: 'script', child: Text('سکریپت / کۆد', style: TextStyle(color: Colors.white))),
+                          ],
+                          onChanged: (val) => setState(() => editType = val!),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (editType == 'image') ...[
+                      TextField(controller: editImgCtrl, decoration: const InputDecoration(labelText: 'لینکی وێنە')),
+                      const SizedBox(height: 10),
+                      TextField(controller: editLinkCtrl, decoration: const InputDecoration(labelText: 'لینکی دەرەکی بۆ کرتن')),
+                    ] else ...[
+                      TextField(controller: editScriptCtrl, maxLines: 3, decoration: const InputDecoration(labelText: 'کۆدی HTML / Script')),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('پاشگەزبوونەوە', style: TextStyle(color: Colors.grey))),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                  onPressed: () async {
+                    await FirebaseFirestore.instance.collection('ads').doc(doc.id).update({
+                      'type': editType,
+                      'image_url': editImgCtrl.text,
+                      'click_url': editLinkCtrl.text,
+                      'script_code': editScriptCtrl.text,
+                    });
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  child: const Text('پاشەکەوتکردن', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -323,7 +391,6 @@ class _AdsTabState extends State<_AdsTab> {
                     var doc = snapshot.data!.docs[index];
                     var data = doc.data() as Map<String, dynamic>;
                     bool isScript = data['type'] == 'script';
-                    // بۆ ئەوەی ڕیکلامە کۆنەکەی پێشووتر کە تەنها banner بوو نەیخوێنێتەوە بە هەڵە
                     if(doc.id == 'banner') return const SizedBox(); 
                     
                     return Card(
@@ -331,8 +398,15 @@ class _AdsTabState extends State<_AdsTab> {
                       child: ListTile(
                         leading: Icon(isScript ? Icons.code : Icons.image, color: Colors.orange, size: 30),
                         title: Text(isScript ? 'ڕیکلامی سکریپت' : 'ڕیکلامی وێنە'),
-                        subtitle: Text(isScript ? 'کۆدێکی تێدایە' : (data['click_url'] ?? '')),
-                        trailing: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('ads').doc(doc.id).delete()),
+                        subtitle: Text(isScript ? 'کۆدێکی تێدایە' : (data['click_url'] ?? 'بێ لینک')),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // دوگمەی دەستکاریکردنمان بۆ ئێرەش زیاد کرد
+                            IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _editAd(doc)),
+                            IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => FirebaseFirestore.instance.collection('ads').doc(doc.id).delete()),
+                          ],
+                        ),
                       ),
                     );
                   },
